@@ -266,6 +266,17 @@ var AUDIENCE_GREETING = {
   'קשישים': 'שלום,', 'אקו': 'היי כולם,', 'ערבית': ''
 };
 
+// פורמט שעה מ-gviz Date string
+function formatTime(val) {
+  if (!val) return '';
+  var m = String(val).match(/Date\((\d+),(\d+),(\d+),(\d+),(\d+)/);
+  if (m) {
+    var h = parseInt(m[4]), min = parseInt(m[5]);
+    return (h < 10 ? '0' : '') + h + ':' + (min < 10 ? '0' : '') + min;
+  }
+  return val;
+}
+
 // =============================================
 // LOAD FROM GOOGLE SHEETS (public JSON API)
 // =============================================
@@ -338,6 +349,8 @@ function handleSheetData(data) {
       var w = { id: String(idx) };
       DEFAULT_ORDER.forEach(function(field) { w[field] = ''; });
       Object.keys(colIndex).forEach(function(i) { w[colIndex[i]] = get(Number(i)); });
+      w.start = formatTime(w.start);
+      w.end   = formatTime(w.end);
       workshops.push(w);
     });
 
