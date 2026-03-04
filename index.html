@@ -245,6 +245,7 @@
 var SHEET_ID = '1A6EPgnd0cax-KDjGtV1D1mXnhNE1mie1FCJLljybEgI';
 var SHEET_NAME = 'סדנאות'; // שם הטאב בשיט
 var INSTRUCTORS_SHEET_ID = '1Alx8bVriD2AB19cW75Wq5YAMO8tanLIJvvX8qe_X-w8';
+var WA_GROUPS_SHEET_NAME = 'קישורים לקבוצות ווטסאפ';
 
 // עמודות — חייבות להתאים לשורת הכותרת בשיט (A, B, C...)
 // A=name, B=desc, C=audience, D=day, E=start, F=end,
@@ -432,33 +433,64 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 // =============================================
 // WHATSAPP
 // =============================================
+
+function loadWAGroups() {
+  var gl = document.getElementById('wa-groups-list');
+  gl.innerHTML = '<div style="color:var(--text-muted);font-size:13px">טוען קישורים...</div>';
+
+  var url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+    '/gviz/tq?tqx=out:json&sheet=' + encodeURIComponent(WA_GROUPS_SHEET_NAME) + '&t=' + Date.now();
+
+  fetch(url)
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      var json = text.replace(/^[^(]+\(/, '').replace(/\);?$/, '');
+      var data = JSON.parse(json);
+      var headers = [];
+      if (data.table.cols) data.table.cols.forEach(function(c) { headers.push(c && c.label ? c.label.trim() : ''); });
+
+      var audIdx    = headers.indexOf('קהל יעד');
+      var nameIdx   = headers.indexOf('שם הקבוצה');
+      var linkIdx   = headers.indexOf('קישור');
+      var statusIdx = headers.indexOf('סטטוס');
+
+      if (linkIdx === -1) { gl.innerHTML = '<p style="color:var(--text-muted);font-size:14px">לא נמצא טאב "קישורים לקבוצות ווטסאפ" בשיט.</p>'; return; }
+
+      var STATUS_COLOR = { 'פתוחה': 'var(--green)', 'כמעט מלאה': 'var(--yellow)', 'מלאה': 'var(--accent2)' };
+      var html = '';
+      data.table.rows.forEach(function(row) {
+        if (!row.c) return;
+        var get = function(i) { return (i >= 0 && row.c[i] && row.c[i].v !== null) ? String(row.c[i].v).trim() : ''; };
+        var aud    = get(audIdx);
+        var name   = get(nameIdx);
+        var link   = get(linkIdx);
+        var status = get(statusIdx) || 'פתוחה';
+        if (!link) return;
+        var color = STATUS_COLOR[status] || 'var(--text-muted)';
+        html += '<div class="contact-row">' +
+          '<div>' +
+            '<div class="contact-role">' + aud + '</div>' +
+            '<div style="font-weight:600;font-size:14px">' + name + '</div>' +
+            '<div style="font-size:12px;color:' + color + ';margin-top:2px">' + status + '</div>' +
+          '</div>' +
+          '<a href="' + link + '" target="_blank" class="btn-wa" style="font-size:13px;padding:7px 14px">פתח קבוצה</a>' +
+        '</div>';
+      });
+      gl.innerHTML = html || '<p style="color:var(--text-muted);font-size:14px">אין קישורים בטאב.</p>';
+    })
+    .catch(function() {
+      gl.innerHTML = '<p style="color:var(--accent2);font-size:14px">שגיאה בטעינת הקישורים.</p>';
+    });
+}
+
 function renderWAView() {
   var sel = document.getElementById('wa-select');
   sel.innerHTML = '<option value="">— בחר סדנה —</option>';
   workshops.forEach(function(w) {
     sel.innerHTML += '<option value="' + w.id + '">' + w.name + ' | יום ' + (w.day||'?') + ' ' + (w.start||'') + '</option>';
   });
-  var byAudience = {};
-  workshops.forEach(function(w) {
-    if (w.waGroup && w.audience) {
-      if (!byAudience[w.audience]) byAudience[w.audience] = [];
-      if (byAudience[w.audience].indexOf(w.waGroup) === -1) byAudience[w.audience].push(w.waGroup);
-    }
-  });
-  var gl = document.getElementById('wa-groups-list');
-  var keys = Object.keys(byAudience);
-  if (keys.length === 0) {
-    gl.innerHTML = '<p style="color:var(--text-muted);font-size:14px">עדיין אין קישורי קבוצות בשיט.</p>';
-    return;
-  }
-  var html = '';
-  keys.forEach(function(audience) {
-    byAudience[audience].forEach(function(link, i) {
-      var label = audience + (byAudience[audience].length > 1 ? ' ' + (i+1) : '');
-      html += '<div class="contact-row"><div><div class="contact-role">' + label + '</div><div style="font-size:12px;color:var(--text-muted)">' + link + '</div></div><a href="' + link + '" target="_blank" class="btn-wa" style="font-size:13px;padding:7px 14px">פתח קבוצה</a></div>';
-    });
-  });
-  gl.innerHTML = html;
+  // טען קישורים מהטאב הייעודי
+  loadWAGroups();
 }
 
 function generateWAMessage() {
