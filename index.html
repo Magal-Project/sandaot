@@ -275,22 +275,21 @@ function loadFromSheet() {
   statusEl.textContent = 'טוען...';
   if (loadingEl) loadingEl.style.display = 'flex';
 
-  // Google Sheets JSON export URL (works for publicly shared sheets)
   var url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
-    '/gviz/tq?tqx=out:json&sheet=' + encodeURIComponent(SHEET_NAME);
-
-  var script = document.createElement('script');
-  script.src = url + '&callback=handleSheetData';
-  script.onerror = function() {
-    statusEl.className = 'sync-status err';
-    statusEl.textContent = 'שגיאה בטעינה — בדוק שהשיט ציבורי';
-    if (loadingEl) loadingEl.style.display = 'none';
-  };
-  // Remove previous script tags
-  var old = document.getElementById('sheets-script');
-  if (old) old.remove();
-  script.id = 'sheets-script';
-  document.head.appendChild(script);
+    '/gviz/tq?tqx=out:json&sheet=' + encodeURIComponent(SHEET_NAME) + '&t=' + Date.now();
+  fetch(url)
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      var json = text.replace(/^[^(]+\(/, '').replace(/\);?$/, '');
+      var data = JSON.parse(json);
+      handleSheetData(data);
+    })
+    .catch(function(err) {
+      statusEl.className = 'sync-status err';
+      statusEl.textContent = 'שגיאה בטעינה — בדוק שהשיט ציבורי';
+      if (loadingEl) loadingEl.style.display = 'none';
+      console.error(err);
+    });
 }
 
 function handleSheetData(data) {
@@ -552,18 +551,20 @@ function loadInstructors() {
   statusEl.textContent = 'טוען...';
   if (loadingEl) loadingEl.style.display = 'flex';
 
-  var url = 'https://docs.google.com/spreadsheets/d/' + INSTRUCTORS_SHEET_ID + '/gviz/tq?tqx=out:json';
-  var script = document.createElement('script');
-  script.src = url + '&callback=handleInstructorsData';
-  script.onerror = function() {
-    statusEl.className = 'sync-status err';
-    statusEl.textContent = 'שגיאה — בדוק שהשיט ציבורי';
-    if (loadingEl) loadingEl.style.display = 'none';
-  };
-  var old = document.getElementById('instr-script');
-  if (old) old.remove();
-  script.id = 'instr-script';
-  document.head.appendChild(script);
+  var url = 'https://docs.google.com/spreadsheets/d/' + INSTRUCTORS_SHEET_ID + '/gviz/tq?tqx=out:json&t=' + Date.now();
+  fetch(url)
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      var json = text.replace(/^[^(]+\(/, '').replace(/\);?$/, '');
+      var data = JSON.parse(json);
+      handleInstructorsData(data);
+    })
+    .catch(function(err) {
+      statusEl.className = 'sync-status err';
+      statusEl.textContent = 'שגיאה — בדוק שהשיט ציבורי';
+      if (loadingEl) loadingEl.style.display = 'none';
+      console.error(err);
+    });
 }
 
 function handleInstructorsData(data) {
