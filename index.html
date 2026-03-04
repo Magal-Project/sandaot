@@ -261,11 +261,11 @@ var currentFilter = 'all';
 
 var AUDIENCE_COLORS = {
   'ילדים': 'badge-green', 'נוער': 'badge-blue',
-  'קשישים': 'badge-yellow', 'אקו': 'badge-purple', 'ערבית': 'badge-orange'
+  'אזרחים ותיקים': 'badge-yellow', 'אקו': 'badge-purple', 'ערבית': 'badge-orange'
 };
 var AUDIENCE_GREETING = {
   'ילדים': 'הורים יקרים,', 'נוער': 'היי כולם,',
-  'קשישים': 'שלום,', 'אקו': 'היי כולם,', 'ערבית': ''
+  'אזרחים ותיקים': 'שלום,', 'אקו': 'היי כולם,', 'ערבית': ''
 };
 
 // פורמט טלפון — מוסיף 0 בהתחלה ומפרמט כ-0XX-XXX-XXXX
@@ -590,7 +590,7 @@ function generateWAMessage() {
 
 
   parts.push('מוזמנים להפיץ את הקבוצה להצטרפות של חברים נוספים בקישור -');
-  parts.push('https://Magal-Project.github.io/sandaot/join.html');
+  parts.push('https://Magal-Project.github.io/sandaot/join');
   parts.push('');
 
   if (withReg) {
