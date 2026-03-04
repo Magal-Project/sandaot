@@ -816,7 +816,7 @@ function renderInstructors() {
     }).join('');
 
     return '<div class="instructor-card" id="instr-' + p.id + '">' +
-      '<div class="instructor-header" onclick="toggleInstructor(' + JSON.stringify(p.id) + ')"> ' +
+      '<div class="instructor-header" onclick="toggleInstructor(this)" data-id="' + p.id + '"> ' +
         '<div><div class="instructor-name">' + p.name + '</div><div class="instructor-topic">' + (p.topic || '—') + '</div></div>' +
         '<div style="font-size:13px;color:var(--text-muted)">' + (p.ages || '—') + '</div>' +
         '<div style="font-size:13px;color:var(--text-muted)">' + (p.artField || '—') + '</div>' +
@@ -830,7 +830,8 @@ function renderInstructors() {
   }).join('');
 }
 
-function toggleInstructor(id) {
+function toggleInstructor(el) {
+  var id = el.getAttribute('data-id');
   var detail = document.getElementById('detail-' + id);
   if (detail) detail.classList.toggle('open');
 }
