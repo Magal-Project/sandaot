@@ -58,9 +58,66 @@ var params = new URLSearchParams(window.location.search);
 var audience = params.get('q') || '';
 
 if (!audience) {
-  showError('לא צוין קהל יעד בקישור.');
+  loadCategories();
 } else {
   loadGroup();
+}
+
+function loadCategories() {
+  document.getElementById('card').innerHTML =
+    '<div class="spinner-wrap"><div class="spinner"></div><div style="color:var(--muted);font-size:14px">טוען קטגוריות...</div></div>';
+
+  var url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+    '/gviz/tq?tqx=out:json&headers=1&sheet=' + encodeURIComponent(SHEET_NAME) + '&t=' + Date.now();
+
+  fetch(url)
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      var json = text.replace(/^[^(]+\(/, '').replace(/\);?$/, '');
+      var data = JSON.parse(json);
+      var headers = [];
+      if (data.table.cols) data.table.cols.forEach(function(c) { headers.push(c && c.label ? c.label.trim() : ''); });
+      var audIdx    = headers.indexOf('קהל יעד');
+      var linkIdx   = headers.indexOf('קישור');
+      var statusIdx = headers.indexOf('סטטוס');
+
+      // מצא כל הקטגוריות עם לפחות קבוצה אחת פתוחה
+      var categories = {};
+      data.table.rows.forEach(function(row) {
+        if (!row.c) return;
+        var get = function(i) { return (i >= 0 && row.c[i] && row.c[i].v !== null) ? String(row.c[i].v).trim() : ''; };
+        var aud = get(audIdx), link = get(linkIdx), status = get(statusIdx) || 'פתוחה';
+        if (aud && link && status !== 'מלאה') {
+          if (!categories[aud]) categories[aud] = 0;
+          categories[aud]++;
+        }
+      });
+
+      var keys = Object.keys(categories);
+      if (keys.length === 0) {
+        document.getElementById('card').innerHTML =
+          '<div class="logo">⚠️</div><div class="title">אין קבוצות פתוחות כרגע</div>';
+        return;
+      }
+
+      var btns = keys.map(function(aud) {
+        var badge = AUDIENCE_BADGE[aud] || 'badge-blue';
+        return '<a href="?q=' + encodeURIComponent(aud) + '" style="display:flex;align-items:center;justify-content:space-between;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:10px;text-decoration:none;color:var(--text);transition:border-color 0.15s" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">' +
+          '<span style="font-weight:700;font-size:15px">' + aud + '</span>' +
+          '<span class="badge ' + badge + '">' + categories[aud] + ' קבוצ' + (categories[aud] === 1 ? 'ה' : 'ות') + '</span>' +
+          '</a>';
+      }).join('');
+
+      document.getElementById('card').innerHTML =
+        '<div class="logo">💬</div>' +
+        '<div class="title" style="margin-bottom:8px">לאיזו קבוצה להצטרף?</div>' +
+        '<div class="subtitle" style="margin-bottom:24px">בחר/י את הקטגוריה המתאימה</div>' +
+        btns;
+    })
+    .catch(function() {
+      document.getElementById('card').innerHTML =
+        '<div class="logo">⚠️</div><div class="title">שגיאה בטעינה</div><div class="err">נסה שוב מאוחר יותר</div>';
+    });
 }
 
 function loadGroup() {
