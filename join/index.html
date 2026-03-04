@@ -57,11 +57,13 @@ var AUDIENCE_LABEL = {
 var params = new URLSearchParams(window.location.search);
 var audience = params.get('q') || '';
 
-if (!audience) {
-  loadCategories();
-} else {
-  loadGroup();
-}
+window.onload = function() {
+  if (!audience) {
+    loadCategories();
+  } else {
+    loadGroup();
+  }
+};
 
 function loadCategories() {
   document.getElementById('card').innerHTML =
