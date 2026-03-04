@@ -49,7 +49,7 @@
   .filter-btn:hover, .filter-btn.active { border-color: var(--accent); color: var(--accent); background: rgba(79,142,247,0.08); }
 
   .workshops-grid { display: flex; flex-direction: column; gap: 12px; }
-  .workshop-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; display: grid; grid-template-columns: 3fr 1fr 1.2fr 1.5fr 1fr; align-items: center; gap: 16px; transition: border-color 0.15s; cursor: pointer; }
+  .workshop-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; display: grid; grid-template-columns: 3fr 1fr 1.2fr 1.5fr 1fr 0.6fr; align-items: center; gap: 16px; transition: border-color 0.15s; cursor: pointer; }
   .workshop-card:hover { border-color: var(--accent); }
   .workshop-name { font-weight: 700; font-size: 16px; }
   .workshop-desc { font-size: 13px; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px; }
@@ -174,8 +174,8 @@
     <div class="section-header">
       <div class="filters" id="filters-row"></div>
     </div>
-    <div class="table-header">
-      <div>סדנה</div><div>קהל יעד</div><div>יום ושעה</div><div>מנחה</div><div>חשבון זום</div>
+    <div class="table-header" style="grid-template-columns:3fr 1fr 1.2fr 1.5fr 1fr 0.6fr">
+      <div>סדנה</div><div>קהל יעד</div><div>יום ושעה</div><div>מנחה</div><div>חשבון זום</div><div>גיל הרך</div>
     </div>
     <div id="workshops-loading" class="loading-bar"><div class="spinner"></div>טוען נתונים מהשיט...</div>
     <div class="workshops-grid" id="workshops-grid"></div>
@@ -307,7 +307,7 @@ function handleSheetData(data) {
       'חשבון זום': 'zoomAcc', 'קישור זום': 'zoomLink',
       'מנחה': 'host', 'טלפון מנחה': 'hostPhone',
       'איש טכני': 'tech', 'טלפון טכני': 'techPhone',
-      'ציוד': 'equipment', 'קישור ווטסאפ': 'waGroup', 'טקסט פרסום': 'promo',
+      'ציוד': 'equipment', 'קישור ווטסאפ': 'waGroup', 'טקסט פרסום': 'promo', 'מותאם לגיל הרך': 'earlyAge',
       'name': 'name', 'desc': 'desc', 'audience': 'audience',
       'day': 'day', 'start': 'start', 'end': 'end',
       'zoomAcc': 'zoomAcc', 'zoomLink': 'zoomLink',
@@ -327,7 +327,7 @@ function handleSheetData(data) {
     }
 
     var hasHeaders = Object.keys(colIndex).length > 0;
-    var DEFAULT_ORDER = ['name','desc','audience','day','start','end','zoomAcc','zoomLink','host','hostPhone','tech','techPhone','equipment','waGroup','promo'];
+    var DEFAULT_ORDER = ['name','desc','audience','day','start','end','zoomAcc','zoomLink','host','hostPhone','tech','techPhone','equipment','waGroup','promo','earlyAge'];
     var startRow = hasHeaders ? 1 : 0;
 
     rows.slice(startRow).forEach(function(row, idx) {
@@ -399,6 +399,7 @@ function renderWorkshops() {
       '<div class="time-block">יום ' + (w.day||'—') + '<span>' + (w.start||'—') + ' – ' + (w.end||'—') + '</span></div>' +
       '<div style="font-size:14px">' + (w.host||'—') + '<br><span style="color:var(--text-muted);font-size:12px">' + (w.hostPhone||'') + '</span></div>' +
       '<div><span class="zoom-badge">' + (w.zoomAcc||'—') + '</span></div>' +
+      '<div>' + (w.earlyAge === 'TRUE' ? '<span class="badge badge-green" style="font-size:11px">גיל הרך ✓</span>' : '') + '</div>' +
       '</div>';
   }).join('');
 }
@@ -417,6 +418,7 @@ function openDetail(id) {
   html += '<div><div class="detail-item-label">חשבון זום</div><div class="detail-item-value">' + (w.zoomAcc||'—') + '</div></div>';
   if (w.zoomLink) html += '<div class="detail-full"><div class="detail-item-label">קישור זום</div><div class="detail-item-value"><a href="' + w.zoomLink + '" target="_blank" style="color:var(--accent)">' + w.zoomLink + '</a></div></div>';
   if (w.equipment) html += '<div class="detail-full"><div class="detail-item-label">ציוד / תנאים</div><div class="detail-item-value" style="font-weight:400;font-size:14px">' + w.equipment + '</div></div>';
+  html += '<div><div class="detail-item-label">מותאם לגיל הרך</div><div class="detail-item-value">' + (w.earlyAge === 'TRUE' ? '<span class="badge badge-green">כן ✓</span>' : '<span style="color:var(--text-muted)">לא</span>') + '</div></div>';
   html += '</div>';
   if (w.host) html += '<div class="contact-row"><div><div class="contact-role">מנחה</div><div class="contact-name">' + w.host + '</div></div><div class="contact-phone">' + (w.hostPhone||'') + '</div>' + (w.hostPhone ? '<a href="tel:' + w.hostPhone + '" class="btn-icon" style="text-decoration:none">📞</a>' : '') + '</div>';
   if (w.tech) html += '<div class="contact-row"><div><div class="contact-role">טכני</div><div class="contact-name">' + w.tech + '</div></div><div class="contact-phone">' + (w.techPhone||'') + '</div>' + (w.techPhone ? '<a href="tel:' + w.techPhone + '" class="btn-icon" style="text-decoration:none">📞</a>' : '') + '</div>';
@@ -487,6 +489,11 @@ function generateWAMessage() {
   if (w.equipment) {
     parts.push('לקראת הסדנה, יש להכין:');
     parts.push(w.equipment);
+    parts.push('');
+  }
+
+  if (w.earlyAge === 'TRUE') {
+    parts.push('הסדנה מתאימה גם לגיל הרך');
     parts.push('');
   }
 
@@ -576,17 +583,18 @@ function handleInstructorsData(data) {
     var rows = data.table.rows;
     instructors = [];
 
-    // שורה 0 = כותרות
+    // כותרות מגיעות מ-cols (לא משורה ראשונה) ב-gviz API
     var headers = [];
-    if (rows.length > 0 && rows[0].c) {
-      rows[0].c.forEach(function(cell) {
-        headers.push(cell && cell.v ? String(cell.v).trim() : '');
+    if (data.table.cols) {
+      data.table.cols.forEach(function(col) {
+        headers.push(col && col.label ? String(col.label).trim() : '');
       });
     }
 
     var getIdx = function(name) { return headers.indexOf(name); };
 
-    rows.slice(1).forEach(function(row, idx) {
+    // gviz API מחזיר כותרות ב-cols, לא כשורה ראשונה — כל השורות הן נתונים
+    rows.forEach(function(row, idx) {
       if (!row.c) return;
       var get = function(name) {
         var i = getIdx(name);
