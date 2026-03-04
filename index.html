@@ -123,6 +123,25 @@
   .toast { position: fixed; bottom: 32px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--green); color: #0f1117; font-weight: 700; font-size: 14px; padding: 12px 24px; border-radius: 24px; z-index: 999; transition: transform 0.3s; pointer-events: none; }
   .toast.show { transform: translateX(-50%) translateY(0); }
   .empty { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+  /* INSTRUCTORS */
+  .instructors-grid { display: flex; flex-direction: column; gap: 12px; }
+  .instructor-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 24px; cursor: pointer; transition: border-color 0.15s; }
+  .instructor-card:hover { border-color: var(--accent); }
+  .instructor-header { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; align-items: center; gap: 16px; }
+  .instructor-name { font-weight: 700; font-size: 16px; }
+  .instructor-topic { font-size: 13px; color: var(--text-muted); margin-top: 3px; }
+  .instructor-detail { display: none; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+  .instructor-detail.open { display: block; }
+  .detail-row { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-row-label { color: var(--text-muted); min-width: 160px; font-size: 13px; flex-shrink: 0; }
+  .detail-row-value { font-weight: 500; }
+  .avail-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
+  .avail-day { background: var(--surface2); border-radius: 8px; padding: 8px 12px; font-size: 13px; }
+  .avail-day-name { font-weight: 700; margin-bottom: 4px; color: var(--accent); font-size: 12px; }
+  .avail-times { color: var(--text-muted); font-size: 12px; line-height: 1.5; }
+  .instr-sync-row { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+
   .empty-icon { font-size: 48px; margin-bottom: 16px; }
 </style>
 </head>
@@ -134,6 +153,7 @@
     <button class="active" onclick="showView('workshops',this)">סדנאות</button>
     <button onclick="showView('whatsapp',this)">הודעות ווטסאפ</button>
     <button onclick="showView('zoom',this)">ניהול זום</button>
+    <button onclick="showView('instructors',this)">מנחים</button>
   </nav>
 </header>
 
@@ -192,6 +212,20 @@
     <div class="zoom-grid" id="zoom-grid"></div>
   </div>
 
+  <!-- INSTRUCTORS VIEW -->
+  <div class="view" id="view-instructors">
+    <div class="instr-sync-row">
+      <button class="btn-sync" onclick="loadInstructors()">&#8635; רענן מנחים</button>
+      <span class="sync-status" id="instr-sync-status"></span>
+    </div>
+    <div class="notice">
+      נתונים מתוך <a href="https://docs.google.com/spreadsheets/d/1Alx8bVriD2AB19cW75Wq5YAMO8tanLIJvvX8qe_X-w8/edit" target="_blank">שיט תגובות הפורמז</a>. לחץ על מנחה לפרטים מלאים.
+    </div>
+    <div id="instructors-loading" class="loading-bar" style="display:none"><div class="spinner"></div>טוען מנחים...</div>
+    <div class="instructors-grid" id="instructors-grid"></div>
+  </div>
+
+
 </main>
 
 <!-- DETAIL MODAL -->
@@ -210,6 +244,7 @@
 // =============================================
 var SHEET_ID = '1A6EPgnd0cax-KDjGtV1D1mXnhNE1mie1FCJLljybEgI';
 var SHEET_NAME = 'סדנאות'; // שם הטאב בשיט
+var INSTRUCTORS_SHEET_ID = '1Alx8bVriD2AB19cW75Wq5YAMO8tanLIJvvX8qe_X-w8';
 
 // עמודות — חייבות להתאים לשורת הכותרת בשיט (A, B, C...)
 // A=name, B=desc, C=audience, D=day, E=start, F=end,
@@ -218,6 +253,7 @@ var SHEET_NAME = 'סדנאות'; // שם הטאב בשיט
 // =============================================
 
 var workshops = [];
+var instructors = [];
 var currentFilter = 'all';
 
 var AUDIENCE_COLORS = {
@@ -330,6 +366,7 @@ function showView(name, btn) {
   if (btn) btn.classList.add('active');
   if (name === 'whatsapp') renderWAView();
   if (name === 'zoom') renderZoomView();
+  if (name === 'instructors') { if (instructors.length === 0) loadInstructors(); else renderInstructors(); }
 }
 
 function renderWorkshops() {
@@ -502,6 +539,150 @@ function renderZoomView() {
     html += '<div class="zoom-card"><div class="zoom-card-name">' + acc + '</div><div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">' + accWs.length + ' סדנאות</div>' + (slots || '<div class="zoom-free">פנוי</div>') + '</div>';
   });
   document.getElementById('zoom-grid').innerHTML = html;
+}
+
+
+// =============================================
+// INSTRUCTORS
+// =============================================
+function loadInstructors() {
+  var statusEl = document.getElementById('instr-sync-status');
+  var loadingEl = document.getElementById('instructors-loading');
+  statusEl.className = 'sync-status';
+  statusEl.textContent = 'טוען...';
+  if (loadingEl) loadingEl.style.display = 'flex';
+
+  var url = 'https://docs.google.com/spreadsheets/d/' + INSTRUCTORS_SHEET_ID + '/gviz/tq?tqx=out:json';
+  var script = document.createElement('script');
+  script.src = url + '&callback=handleInstructorsData';
+  script.onerror = function() {
+    statusEl.className = 'sync-status err';
+    statusEl.textContent = 'שגיאה — בדוק שהשיט ציבורי';
+    if (loadingEl) loadingEl.style.display = 'none';
+  };
+  var old = document.getElementById('instr-script');
+  if (old) old.remove();
+  script.id = 'instr-script';
+  document.head.appendChild(script);
+}
+
+function handleInstructorsData(data) {
+  var statusEl = document.getElementById('instr-sync-status');
+  var loadingEl = document.getElementById('instructors-loading');
+  if (loadingEl) loadingEl.style.display = 'none';
+
+  try {
+    var rows = data.table.rows;
+    instructors = [];
+
+    // שורה 0 = כותרות
+    var headers = [];
+    if (rows.length > 0 && rows[0].c) {
+      rows[0].c.forEach(function(cell) {
+        headers.push(cell && cell.v ? String(cell.v).trim() : '');
+      });
+    }
+
+    var getIdx = function(name) { return headers.indexOf(name); };
+
+    rows.slice(1).forEach(function(row, idx) {
+      if (!row.c) return;
+      var get = function(name) {
+        var i = getIdx(name);
+        return (i >= 0 && row.c[i] && row.c[i].v !== null) ? String(row.c[i].v) : '';
+      };
+      var name = get('שם');
+      if (!name) return;
+      instructors.push({
+        id: String(idx),
+        timestamp:  get('Timestamp'),
+        name:       name,
+        phone:      get('מספר טלפון'),
+        howCame:    get('איך הגעתי להעברת הסדנא?'),
+        topic:      get('כותרת הסדנא'),
+        desc:       get('הסבר קצר על מה קורה בסדנא'),
+        duration:   get('אורך הסדנא'),
+        artField:   get('תחום אמנות בו הסדנא עוסקת'),
+        ages:       get('לאילו גילאים מתאימה הסדנא'),
+        equipment:  get('ציוד נדרש/היערכות מוקדמת'),
+        techNeeds:  get('צרכים טכניים נוספים'),
+        availSun:   get('באילו זמנים אוכל להעביר את הסדנא [יום ראשון]'),
+        availMon:   get('באילו זמנים אוכל להעביר את הסדנא [יום שני]'),
+        availTue:   get('באילו זמנים אוכל להעביר את הסדנא [יום שלישי]'),
+        availWed:   get('באילו זמנים אוכל להעביר את הסדנא [יום רביעי]'),
+        availThu:   get('באילו זמנים אוכל להעביר את הסדנא [יום חמישי]'),
+        availOther: get('זמן אחר'),
+        notes:      get('הערות/בקשות נוספות'),
+        location:   get('מקום מגורים')
+      });
+    });
+
+    statusEl.className = 'sync-status ok';
+    statusEl.textContent = 'עודכן — ' + instructors.length + ' מנחים';
+    renderInstructors();
+  } catch(e) {
+    statusEl.className = 'sync-status err';
+    statusEl.textContent = 'שגיאה בעיבוד הנתונים';
+    console.error(e);
+  }
+}
+
+function renderInstructors() {
+  var grid = document.getElementById('instructors-grid');
+  if (instructors.length === 0) {
+    grid.innerHTML = '<div class="empty"><div class="empty-icon">👤</div><div>אין מנחים עדיין</div></div>';
+    return;
+  }
+
+  var DAYS = [
+    { key: 'availSun', label: 'ראשון' }, { key: 'availMon', label: 'שני' },
+    { key: 'availTue', label: 'שלישי' }, { key: 'availWed', label: 'רביעי' },
+    { key: 'availThu', label: 'חמישי' }, { key: 'availOther', label: 'אחר' }
+  ];
+
+  grid.innerHTML = instructors.map(function(p) {
+    var availDays = DAYS.filter(function(d) { return p[d.key]; });
+
+    var availHTML = availDays.length > 0
+      ? '<div class="avail-grid">' + availDays.map(function(d) {
+          return '<div class="avail-day"><div class="avail-day-name">יום ' + d.label + '</div><div class="avail-times">' + p[d.key] + '</div></div>';
+        }).join('') + '</div>'
+      : '<span style="color:var(--text-muted);font-size:13px">לא צוין</span>';
+
+    var rows = [
+      { label: 'טלפון', value: p.phone ? '<a href="tel:' + p.phone + '" style="color:var(--accent)">' + p.phone + '</a>' : '—' },
+      { label: 'כותרת הסדנא', value: p.topic || '—' },
+      { label: 'תיאור', value: p.desc || '—' },
+      { label: 'תחום אמנות', value: p.artField || '—' },
+      { label: 'גילאים', value: p.ages || '—' },
+      { label: 'אורך הסדנא', value: p.duration || '—' },
+      { label: 'ציוד נדרש', value: p.equipment || '—' },
+      { label: 'צרכים טכניים', value: p.techNeeds || '—' },
+      { label: 'מקום מגורים', value: p.location || '—' },
+      { label: 'איך הגיע/ה', value: p.howCame || '—' },
+      { label: 'הערות', value: p.notes || '—' },
+    ].map(function(r) {
+      return '<div class="detail-row"><div class="detail-row-label">' + r.label + '</div><div class="detail-row-value">' + r.value + '</div></div>';
+    }).join('');
+
+    return '<div class="instructor-card" id="instr-' + p.id + '">' +
+      '<div class="instructor-header" onclick="toggleInstructor('' + p.id + '')">' +
+        '<div><div class="instructor-name">' + p.name + '</div><div class="instructor-topic">' + (p.topic || '—') + '</div></div>' +
+        '<div style="font-size:13px;color:var(--text-muted)">' + (p.ages || '—') + '</div>' +
+        '<div style="font-size:13px;color:var(--text-muted)">' + (p.artField || '—') + '</div>' +
+        '<div style="font-size:12px;color:var(--accent)">' + availDays.map(function(d){ return 'יום ' + d.label; }).join(', ') + '</div>' +
+      '</div>' +
+      '<div class="instructor-detail" id="detail-' + p.id + '">' +
+        rows +
+        '<div class="detail-row"><div class="detail-row-label">זמינות</div><div class="detail-row-value" style="flex:1">' + availHTML + '</div></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function toggleInstructor(id) {
+  var detail = document.getElementById('detail-' + id);
+  if (detail) detail.classList.toggle('open');
 }
 
 function showToast(msg) {
