@@ -246,6 +246,7 @@ var SHEET_ID = '1A6EPgnd0cax-KDjGtV1D1mXnhNE1mie1FCJLljybEgI';
 var SHEET_NAME = 'סדנאות'; // שם הטאב בשיט
 var INSTRUCTORS_SHEET_ID = '1Alx8bVriD2AB19cW75Wq5YAMO8tanLIJvvX8qe_X-w8';
 var WA_GROUPS_SHEET_NAME = 'קישורים לקבוצות ווטסאפ';
+var ZOOM_SHEET_NAME = 'חשבונות זום';
 
 // עמודות — חייבות להתאים לשורת הכותרת בשיט (A, B, C...)
 // A=name, B=desc, C=audience, D=day, E=start, F=end,
@@ -328,13 +329,13 @@ function handleSheetData(data) {
       'חשבון זום': 'zoomAcc', 'קישור זום': 'zoomLink',
       'מנחה': 'host', 'טלפון מנחה': 'hostPhone',
       'איש טכני': 'tech', 'טלפון טכני': 'techPhone',
-      'ציוד': 'equipment', 'קישור ווטסאפ': 'waGroup', 'טקסט פרסום': 'promo', 'מותאם לגיל הרך': 'earlyAge',
+      'ציוד': 'equipment', 'פלאייר': 'flyer', 'מותאם לגיל הרך': 'earlyAge',
       'name': 'name', 'desc': 'desc', 'audience': 'audience',
       'day': 'day', 'start': 'start', 'end': 'end',
       'zoomAcc': 'zoomAcc', 'zoomLink': 'zoomLink',
       'host': 'host', 'hostPhone': 'hostPhone',
       'tech': 'tech', 'techPhone': 'techPhone',
-      'equipment': 'equipment', 'waGroup': 'waGroup', 'promo': 'promo'
+      'equipment': 'equipment', 'flyer': 'flyer'
     };
 
     // כותרות מגיעות מ-cols ב-gviz API
@@ -348,7 +349,7 @@ function handleSheetData(data) {
       });
     }
 
-    var DEFAULT_ORDER = ['name','desc','audience','day','start','end','zoomAcc','zoomLink','host','hostPhone','tech','techPhone','equipment','waGroup','promo','earlyAge'];
+    var DEFAULT_ORDER = ['name','desc','audience','day','start','end','zoomAcc','zoomLink','host','hostPhone','tech','techPhone','equipment','flyer','earlyAge'];
 
     rows.forEach(function(row, idx) {
       if (!row.c || !row.c[0] || !row.c[0].v) return;
@@ -440,6 +441,7 @@ function openDetail(id) {
   if (w.equipment) html += '<div class="detail-full"><div class="detail-item-label">ציוד / תנאים</div><div class="detail-item-value" style="font-weight:400;font-size:14px">' + w.equipment + '</div></div>';
   html += '<div><div class="detail-item-label">מותאם לגיל הרך</div><div class="detail-item-value">' + (w.earlyAge === 'TRUE' ? '<span class="badge badge-green">כן ✓</span>' : '<span style="color:var(--text-muted)">לא</span>') + '</div></div>';
   html += '</div>';
+  if (w.flyer) html += '<div class="detail-full" style="margin-bottom:16px"><div class="detail-item-label">פלאייר</div><div style="margin-top:8px"><a href="' + w.flyer + '" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);color:var(--accent);padding:8px 16px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none">🖼️ פתח פלאייר</a></div></div>';
   if (w.host) html += '<div class="contact-row"><div><div class="contact-role">מנחה</div><div class="contact-name">' + w.host + '</div></div><div class="contact-phone">' + (w.hostPhone||'') + '</div>' + (w.hostPhone ? '<a href="tel:' + w.hostPhone + '" class="btn-icon" style="text-decoration:none">📞</a>' : '') + '</div>';
   if (w.tech) html += '<div class="contact-row"><div><div class="contact-role">טכני</div><div class="contact-name">' + w.tech + '</div></div><div class="contact-phone">' + (w.techPhone||'') + '</div>' + (w.techPhone ? '<a href="tel:' + w.techPhone + '" class="btn-icon" style="text-decoration:none">📞</a>' : '') + '</div>';
   if (w.waGroup) html += '<div style="margin-top:16px"><a href="' + w.waGroup + '" target="_blank" class="btn-wa">פתח קבוצת ווטסאפ</a></div>';
@@ -548,17 +550,10 @@ function generateWAMessage() {
     parts.push('');
   }
 
-  if (w.waGroup) {
-    parts.push('מוזמנים להפיץ את הקבוצה להצטרפות של חברים נוספים בקישור -');
-    parts.push(w.waGroup);
-    parts.push('');
-  }
 
   if (withReg) {
     parts.push('שימו לב: הכניסה לסדנא מותנית במענה על שאלון פרטים קצר על מנת שנוכל לשמור איתכם על קשר.');
   }
-
-  if (w.promo) { parts.push(''); parts.push(w.promo); }
 
   var msg = parts.join('\n').replace(/\n\n\n+/g, '\n\n').trim();
   box.textContent = msg;
@@ -582,20 +577,61 @@ function copyMessage() {
 // ZOOM
 // =============================================
 function renderZoomView() {
-  var accounts = ['חשבון זום 1', 'חשבון זום 2', 'חשבון זום 3'];
-  var DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי'];
-  var html = '';
-  accounts.forEach(function(acc) {
-    var accWs = workshops.filter(function(w) { return w.zoomAcc === acc; });
-    var slots = '';
-    DAYS.forEach(function(day) {
-      accWs.filter(function(w){return w.day===day;}).forEach(function(w) {
-        slots += '<div class="zoom-slot"><div><div style="font-weight:600;font-size:13px">' + w.name + '</div><div style="font-size:11px;color:var(--text-muted)">' + (w.audience||'') + '</div></div><div class="zoom-slot-time">יום ' + day + '<br>' + (w.start||'') + '–' + (w.end||'') + '</div></div>';
+  var grid = document.getElementById('zoom-grid');
+  grid.innerHTML = '<div class="loading-bar"><div class="spinner"></div>טוען חשבונות זום...</div>';
+
+  var url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+    '/gviz/tq?tqx=out:json&headers=1&sheet=' + encodeURIComponent(ZOOM_SHEET_NAME) + '&t=' + Date.now();
+
+  fetch(url)
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      var json = text.replace(/^[^(]+\(/, '').replace(/\);?$/, '');
+      var data = JSON.parse(json);
+
+      var headers = [];
+      if (data.table.cols) data.table.cols.forEach(function(c) { headers.push(c && c.label ? c.label.trim() : ''); });
+
+      var nameIdx  = headers.indexOf('שם החשבון');
+      var emailIdx = headers.indexOf('אימייל');
+      var passIdx  = headers.indexOf('סיסמא');
+
+      var accounts = [];
+      data.table.rows.forEach(function(row) {
+        if (!row.c) return;
+        var get = function(i) { return (i >= 0 && row.c[i] && row.c[i].v !== null) ? String(row.c[i].v).trim() : ''; };
+        var name = get(nameIdx);
+        if (!name) return;
+        accounts.push({ name: name, email: get(emailIdx), pass: get(passIdx) });
       });
+
+      if (accounts.length === 0) {
+        grid.innerHTML = '<div class="empty"><div class="empty-icon">📹</div><div>לא נמצאו חשבונות זום בשיט</div></div>';
+        return;
+      }
+
+      var DAYS = ['ראשון','שני','שלישי','רביעי','חמישי','שישי'];
+      var html = '';
+      accounts.forEach(function(acc) {
+        var accWs = workshops.filter(function(w) { return w.zoomAcc === acc.name; });
+        var slots = '';
+        DAYS.forEach(function(day) {
+          accWs.filter(function(w){ return w.day === day; }).forEach(function(w) {
+            slots += '<div class="zoom-slot"><div><div style="font-weight:600;font-size:13px">' + w.name + '</div><div style="font-size:11px;color:var(--text-muted)">' + (w.audience||'') + '</div></div><div class="zoom-slot-time">יום ' + day + '<br>' + (w.start||'') + '–' + (w.end||'') + '</div></div>';
+          });
+        });
+        var details = '';
+        if (acc.email) details += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">📧 ' + acc.email + '</div>';
+        if (acc.pass)  details += '<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">🔑 ' + acc.pass + '</div>';
+        html += '<div class="zoom-card"><div class="zoom-card-name">' + acc.name + '</div>' + details +
+          '<div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">' + accWs.length + ' סדנאות</div>' +
+          (slots || '<div class="zoom-free">פנוי</div>') + '</div>';
+      });
+      grid.innerHTML = html;
+    })
+    .catch(function() {
+      grid.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div><div>שגיאה בטעינת חשבונות זום</div></div>';
     });
-    html += '<div class="zoom-card"><div class="zoom-card-name">' + acc + '</div><div style="font-size:12px;color:var(--text-muted);margin-bottom:12px">' + accWs.length + ' סדנאות</div>' + (slots || '<div class="zoom-free">פנוי</div>') + '</div>';
-  });
-  document.getElementById('zoom-grid').innerHTML = html;
 }
 
 
