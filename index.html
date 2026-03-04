@@ -193,6 +193,9 @@
         <input type="checkbox" id="wa-registration" onchange="generateWAMessage()">
         כלול הנחיית שאלון רישום זום
       </label>
+      <div id="wa-flyer-row" style="display:none;margin-bottom:12px">
+        <a id="wa-flyer-link" href="#" target="_blank" style="display:inline-flex;align-items:center;gap:8px;background:var(--surface2);border:1px solid var(--border);color:var(--accent);padding:8px 16px;border-radius:8px;font-size:14px;font-weight:600;text-decoration:none">🖼️ פתח פלאייר לשליחה</a>
+      </div>
       <div class="wa-title">הודעה מוכנה</div>
       <div class="wa-message-box" id="wa-message-box">בחר סדנה מהרשימה כדי לייצר הודעה מוכנה לשליחה.</div>
       <div class="wa-actions">
@@ -359,7 +362,7 @@ function handleSheetData(data) {
       'חשבון זום': 'zoomAcc', 'קישור זום': 'zoomLink',
       'מנחה': 'host', 'טלפון מנחה': 'hostPhone',
       'איש טכני': 'tech', 'טלפון טכני': 'techPhone',
-      'ציוד': 'equipment', 'פלאייר': 'flyer', 'מותאם לגיל הרך': 'earlyAge',
+      'ציוד': 'equipment', 'פלאייר': 'flyer', 'מותאם לגיל הרך': 'earlyAge', 'גילאים': 'ages',
       'name': 'name', 'desc': 'desc', 'audience': 'audience',
       'day': 'day', 'start': 'start', 'end': 'end',
       'zoomAcc': 'zoomAcc', 'zoomLink': 'zoomLink',
@@ -379,7 +382,7 @@ function handleSheetData(data) {
       });
     }
 
-    var DEFAULT_ORDER = ['name','desc','audience','date','start','end','zoomAcc','zoomLink','host','hostPhone','tech','techPhone','equipment','flyer','earlyAge'];
+    var DEFAULT_ORDER = ['name','desc','audience','date','start','end','zoomAcc','zoomLink','host','hostPhone','tech','techPhone','equipment','flyer','earlyAge','ages'];
 
     rows.forEach(function(row, idx) {
       if (!row.c || !row.c[0] || !row.c[0].v) return;
@@ -449,7 +452,7 @@ function renderWorkshops() {
   grid.innerHTML = filtered.map(function(w) {
     return '<div class="workshop-card" onclick="openDetail(\'' + w.id + '\')">' +
       '<div><div class="workshop-name">' + w.name + '</div><div class="workshop-desc">' + (w.desc||'—') + '</div></div>' +
-      '<div><span class="badge ' + (AUDIENCE_COLORS[w.audience]||'badge-blue') + '">' + (w.audience||'—') + '</span></div>' +
+      '<div><span class="badge ' + (AUDIENCE_COLORS[w.audience]||'badge-blue') + '">' + (w.audience||'—') + '</span>' + (w.ages ? '<div style="font-size:11px;color:var(--text-muted);margin-top:4px">' + w.ages + '</div>' : '') + '</div>' +
       '<div class="time-block">' + (w.isToday ? '<span style="color:var(--green);font-size:11px">היום</span> ' : 'יום ' + (w.day||'')) + ' ' + (w.dateStr||'') + '<span>' + (w.start||'—') + ' – ' + (w.end||'—') + '</span></div>' +
       '<div style="font-size:14px">' + (w.host||'—') + '<br><span style="color:var(--text-muted);font-size:12px">' + (w.hostPhone||'') + '</span></div>' +
       '<div><span class="zoom-badge">' + (w.zoomAcc||'—') + '</span></div>' +
@@ -467,6 +470,7 @@ function openDetail(id) {
   if (w.desc) html += '<p style="color:var(--text-muted);margin-bottom:20px;font-size:14px">' + w.desc + '</p>';
   html += '<div class="detail-grid">';
   html += '<div><div class="detail-item-label">קהל יעד</div><div class="detail-item-value"><span class="badge ' + (AUDIENCE_COLORS[w.audience]||'badge-blue') + '">' + (w.audience||'—') + '</span></div></div>';
+  if (w.ages) html += '<div><div class="detail-item-label">גילאים</div><div class="detail-item-value" style="font-size:14px;font-weight:500">' + w.ages + '</div></div>';
   html += '<div><div class="detail-item-label">תאריך</div><div class="detail-item-value">' + (w.isToday ? '🟢 היום — ' : '') + 'יום ' + (w.day||'—') + ' ' + (w.dateStr||'') + '</div></div>';
   html += '<div><div class="detail-item-label">שעות</div><div class="detail-item-value">' + (w.start||'—') + ' – ' + (w.end||'—') + '</div></div>';
   html += '<div><div class="detail-item-label">חשבון זום</div><div class="detail-item-value">' + (w.zoomAcc||'—') + '</div></div>';
@@ -551,11 +555,14 @@ function generateWAMessage() {
   var id = document.getElementById('wa-select').value;
   var box = document.getElementById('wa-message-box');
   var btnWa = document.getElementById('btn-open-wa');
+  var flyerRow = document.getElementById('wa-flyer-row');
+  var flyerLink = document.getElementById('wa-flyer-link');
   var withReg = document.getElementById('wa-registration').checked;
 
   if (!id) {
     box.textContent = 'בחר סדנה מהרשימה כדי לייצר הודעה מוכנה לשליחה.';
     btnWa.style.display = 'none';
+    if (flyerRow) flyerRow.style.display = 'none';
     return;
   }
   var w = workshops.find(function(x) { return x.id === id; });
@@ -573,6 +580,7 @@ function generateWAMessage() {
     dayLine = 'ביום ' + (w.day ? w.day + ' ' : '') + (w.dateStr ? '(' + w.dateStr + ') ' : '') + timeStr + ' ניפגש לסדנת ' + w.name;
   }
   parts.push(dayLine);
+  if (w.ages) parts.push('(' + w.ages + ')');
   parts.push('');
 
   if (w.zoomLink) { parts.push(w.zoomLink); parts.push(''); }
@@ -601,6 +609,10 @@ function generateWAMessage() {
   box.textContent = msg;
   btnWa.href = 'https://wa.me/?text=' + encodeURIComponent(msg);
   btnWa.style.display = 'flex';
+  if (flyerRow && flyerLink) {
+    if (w.flyer) { flyerLink.href = w.flyer; flyerRow.style.display = 'block'; }
+    else { flyerRow.style.display = 'none'; }
+  }
 }
 
 function copyMessage() {
