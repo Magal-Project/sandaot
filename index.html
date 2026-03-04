@@ -256,6 +256,7 @@ var ZOOM_SHEET_NAME = 'חשבונות זום';
 
 var workshops = [];
 var instructors = [];
+var waGroupsCache = [];
 var currentFilter = 'all';
 
 var AUDIENCE_COLORS = {
@@ -285,6 +286,35 @@ function formatTime(val) {
     return (h < 10 ? '0' : '') + h + ':' + (min < 10 ? '0' : '') + min;
   }
   return val;
+}
+
+// חישוב יום בשבוע מתאריך
+var DAYS_HE = ['ראשון','שני','שלישי','רביעי','חמישי','שישי','שבת'];
+function parseDate(val) {
+  if (!val) return null;
+  // gviz Date format: Date(year,month,day)
+  var m = String(val).match(/Date\((\d+),(\d+),(\d+)\)/);
+  if (m) return new Date(parseInt(m[1]), parseInt(m[2]), parseInt(m[3]));
+  // DD/MM/YYYY
+  var parts = String(val).split('/');
+  if (parts.length === 3) return new Date(parseInt(parts[2]), parseInt(parts[1])-1, parseInt(parts[0]));
+  return null;
+}
+function getDayHe(val) {
+  var d = parseDate(val);
+  if (!d) return '';
+  return DAYS_HE[d.getDay()];
+}
+function formatDate(val) {
+  var d = parseDate(val);
+  if (!d) return val || '';
+  return d.getDate() + '/' + (d.getMonth()+1) + '/' + d.getFullYear();
+}
+function isToday(val) {
+  var d = parseDate(val);
+  if (!d) return false;
+  var now = new Date();
+  return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
 }
 
 // =============================================
@@ -325,7 +355,7 @@ function handleSheetData(data) {
 
     var COLUMN_MAP = {
       'שם הסדנא': 'name', 'שם הסדנה': 'name', 'תיאור': 'desc', 'קהל יעד': 'audience',
-      'יום': 'day', 'שעת התחלה': 'start', 'שעת סיום': 'end',
+      'תאריך': 'date', 'שעת התחלה': 'start', 'שעת סיום': 'end',
       'חשבון זום': 'zoomAcc', 'קישור זום': 'zoomLink',
       'מנחה': 'host', 'טלפון מנחה': 'hostPhone',
       'איש טכני': 'tech', 'טלפון טכני': 'techPhone',
@@ -349,7 +379,7 @@ function handleSheetData(data) {
       });
     }
 
-    var DEFAULT_ORDER = ['name','desc','audience','day','start','end','zoomAcc','zoomLink','host','hostPhone','tech','techPhone','equipment','flyer','earlyAge'];
+    var DEFAULT_ORDER = ['name','desc','audience','date','start','end','zoomAcc','zoomLink','host','hostPhone','tech','techPhone','equipment','flyer','earlyAge'];
 
     rows.forEach(function(row, idx) {
       if (!row.c || !row.c[0] || !row.c[0].v) return;
@@ -361,6 +391,9 @@ function handleSheetData(data) {
       Object.keys(colIndex).forEach(function(i) { w[colIndex[i]] = get(Number(i)); });
       w.start     = formatTime(w.start);
       w.end       = formatTime(w.end);
+      w.day       = getDayHe(w.date);
+      w.dateStr   = formatDate(w.date);
+      w.isToday   = isToday(w.date);
       w.hostPhone = formatPhone(w.hostPhone);
       w.techPhone = formatPhone(w.techPhone);
       workshops.push(w);
@@ -417,7 +450,7 @@ function renderWorkshops() {
     return '<div class="workshop-card" onclick="openDetail(\'' + w.id + '\')">' +
       '<div><div class="workshop-name">' + w.name + '</div><div class="workshop-desc">' + (w.desc||'—') + '</div></div>' +
       '<div><span class="badge ' + (AUDIENCE_COLORS[w.audience]||'badge-blue') + '">' + (w.audience||'—') + '</span></div>' +
-      '<div class="time-block">יום ' + (w.day||'—') + '<span>' + (w.start||'—') + ' – ' + (w.end||'—') + '</span></div>' +
+      '<div class="time-block">' + (w.isToday ? '<span style="color:var(--green);font-size:11px">היום</span> ' : 'יום ' + (w.day||'')) + ' ' + (w.dateStr||'') + '<span>' + (w.start||'—') + ' – ' + (w.end||'—') + '</span></div>' +
       '<div style="font-size:14px">' + (w.host||'—') + '<br><span style="color:var(--text-muted);font-size:12px">' + (w.hostPhone||'') + '</span></div>' +
       '<div><span class="zoom-badge">' + (w.zoomAcc||'—') + '</span></div>' +
       '<div>' + (w.earlyAge === 'TRUE' ? '<span class="badge badge-green" style="font-size:11px">גיל הרך ✓</span>' : '') + '</div>' +
@@ -434,7 +467,7 @@ function openDetail(id) {
   if (w.desc) html += '<p style="color:var(--text-muted);margin-bottom:20px;font-size:14px">' + w.desc + '</p>';
   html += '<div class="detail-grid">';
   html += '<div><div class="detail-item-label">קהל יעד</div><div class="detail-item-value"><span class="badge ' + (AUDIENCE_COLORS[w.audience]||'badge-blue') + '">' + (w.audience||'—') + '</span></div></div>';
-  html += '<div><div class="detail-item-label">יום</div><div class="detail-item-value">יום ' + (w.day||'—') + '</div></div>';
+  html += '<div><div class="detail-item-label">תאריך</div><div class="detail-item-value">' + (w.isToday ? '🟢 היום — ' : '') + 'יום ' + (w.day||'—') + ' ' + (w.dateStr||'') + '</div></div>';
   html += '<div><div class="detail-item-label">שעות</div><div class="detail-item-value">' + (w.start||'—') + ' – ' + (w.end||'—') + '</div></div>';
   html += '<div><div class="detail-item-label">חשבון זום</div><div class="detail-item-value">' + (w.zoomAcc||'—') + '</div></div>';
   if (w.zoomLink) html += '<div class="detail-full"><div class="detail-item-label">קישור זום</div><div class="detail-item-value"><a href="' + w.zoomLink + '" target="_blank" style="color:var(--accent)">' + w.zoomLink + '</a></div></div>';
@@ -532,9 +565,14 @@ function generateWAMessage() {
   var parts = [];
   if (greeting) { parts.push(greeting); parts.push(''); }
 
-  var dayStr = w.day ? 'יום ' + w.day : '';
   var timeStr = w.start ? 'בשעה ' + w.start : '';
-  parts.push('היום ' + [dayStr, timeStr].filter(function(s){return s;}).join(' ') + ' ניפגש לסדנת ' + w.name);
+  var dayLine;
+  if (w.isToday) {
+    dayLine = 'היום ' + timeStr + ' ניפגש לסדנת ' + w.name;
+  } else {
+    dayLine = 'ביום ' + (w.day ? w.day + ' ' : '') + (w.dateStr ? '(' + w.dateStr + ') ' : '') + timeStr + ' ניפגש לסדנת ' + w.name;
+  }
+  parts.push(dayLine);
   parts.push('');
 
   if (w.zoomLink) { parts.push(w.zoomLink); parts.push(''); }
@@ -551,8 +589,15 @@ function generateWAMessage() {
   }
 
 
+  var bestLink = getBestWALink(w.audience);
+  if (bestLink) {
+    parts.push('מוזמנים להפיץ את הקבוצה להצטרפות של חברים נוספים בקישור -');
+    parts.push(bestLink);
+    parts.push('');
+  }
+
   if (withReg) {
-    parts.push('שימו לב: הכניסה לסדנא מותנית במענה על שאלון פרטים קצר על מנת שנוכל לשמור איתכם על קשר.');
+    parts.push('שימו ❤️ הכניסה לסדנא מותנית במענה על שאלון פרטים קצר על מנת שנוכל לשמור איתכם על קשר.');
   }
 
   var msg = parts.join('\n').replace(/\n\n\n+/g, '\n\n').trim();
@@ -781,6 +826,40 @@ function toggleInstructor(id) {
   if (detail) detail.classList.toggle('open');
 }
 
+
+function loadWAGroupsCache() {
+  var url = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
+    '/gviz/tq?tqx=out:json&headers=1&sheet=' + encodeURIComponent(WA_GROUPS_SHEET_NAME) + '&t=' + Date.now();
+  fetch(url)
+    .then(function(r) { return r.text(); })
+    .then(function(text) {
+      var json = text.replace(/^[^(]+\(/, '').replace(/\);?$/, '');
+      var data = JSON.parse(json);
+      var headers = [];
+      if (data.table.cols) data.table.cols.forEach(function(c) { headers.push(c && c.label ? c.label.trim() : ''); });
+      var audIdx    = headers.indexOf('קהל יעד');
+      var linkIdx   = headers.indexOf('קישור');
+      var statusIdx = headers.indexOf('סטטוס');
+      waGroupsCache = [];
+      data.table.rows.forEach(function(row) {
+        if (!row.c) return;
+        var get = function(i) { return (i >= 0 && row.c[i] && row.c[i].v !== null) ? String(row.c[i].v).trim() : ''; };
+        var aud = get(audIdx), link = get(linkIdx), status = get(statusIdx) || 'פתוחה';
+        if (aud && link) waGroupsCache.push({ audience: aud, link: link, status: status });
+      });
+    }).catch(function() {});
+}
+
+function getBestWALink(audience) {
+  // מחזיר קישור לקבוצה הפתוחה ביותר לפי קהל יעד
+  var relevant = waGroupsCache.filter(function(g) { return g.audience === audience && g.status !== 'מלאה'; });
+  // עדיפות: פתוחה > כמעט מלאה
+  var open = relevant.filter(function(g) { return g.status === 'פתוחה'; });
+  if (open.length > 0) return open[0].link;
+  if (relevant.length > 0) return relevant[0].link;
+  return null;
+}
+
 function showToast(msg) {
   var t = document.getElementById('toast');
   t.textContent = msg;
@@ -794,6 +873,7 @@ document.querySelectorAll('.modal-overlay').forEach(function(o) {
 
 // Load on startup
 loadFromSheet();
+loadWAGroupsCache();
 </script>
 </body>
 </html>
